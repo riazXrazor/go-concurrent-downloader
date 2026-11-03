@@ -11,6 +11,13 @@ import (
 	"time"
 )
 
+// These are populated at build time by the linker via -ldflags -X
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 type ChunkSlice struct {
 	start int64
 	end   int64
@@ -21,6 +28,12 @@ type ChunkSlice struct {
 // https://testfileorg.netwet.net/500MB-CZIPtestfile.org.zip
 // https://pub-821312cfd07a4061bf7b99c1f23ed29b.r2.dev/3dicons-png-dynamic-1.0.0.zip 1.26 GB
 func main() {
+
+	if len(os.Args) > 1 && os.Args[1] == "--version" {
+		fmt.Printf("Go Concurrent Downloader (gcd) %s (commit: %s, built at: %s)\n", version, commit, date)
+		os.Exit(0)
+	}
+
 	start := time.Now()
 	argv := os.Args
 

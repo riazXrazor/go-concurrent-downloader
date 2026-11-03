@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Triggers on v1.0.0, v0.2.1, etc.
+
+permissions:
+  contents: write # Needed to create the GitHub release and upload assets
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetches full history so `git describe` works accurately
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache: true
+
+      - name: Install just
+        uses: extractions/setup-just@v2
+
+      - name: Build archives and checksums
+        run: just release
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            bin/*.tar.gz
+            bin/*.zip
+            bin/checksums.txt
+          generate_release_notes: true
