@@ -16,7 +16,8 @@ This project was built as an exploration into Go's concurrency primitives (`goro
 - **Decoupled Real-Time Progress Pipeline**: Emits byte updates via buffered channels (`chan int64`) to a dedicated UI goroutine without blocking concurrent network I/O.
 - **Adaptive Chunk & Connection Sizing**: Intelligently scales chunk counts (from 1 stream for small files up to a maximum cap of 8 connections) to maximize throughput while avoiding HTTP 429 (Rate Limit) throttling.
 - **Graceful Fallback**: Automatically checks for `Accept-Ranges: bytes` support via a `HEAD` request and falls back to single-stream download if range requests are unsupported.
-- **Integrity Verified**: Validated through MD5 checksum comparisons against original files.
+- **Build Metadata & Versioning**: Injects version tags, commit hashes, and build timestamps at link time (`--version` flag).
+- **Cross-Platform & Automated Releases**: Pre-compiled standalone binaries for Linux (`amd64`, `arm64`), macOS (`amd64`, `arm64`), and Windows (`amd64`) generated via GitHub Actions CI/CD.
 
 ---
 
@@ -28,10 +29,10 @@ This project was built as an exploration into Go's concurrency primitives (`goro
 
 ## 🧠 What I Tried & The Evolution of the Tool
 
-Building this tool was an iterative journey that went from a naive, disk-heavy implementation to a clean, zero-merge concurrent architecture.
+Building this tool was an iterative journey that went from a naive, disk-heavy prototype to a clean, zero-merge concurrent architecture.
 
 ```
-Approach 1 (Naive):
+Approach 1 (Naive Prototype):
 Worker Goroutines ---> [ part_0.bin ] \
 Worker Goroutines ---> [ part_1.bin ]  ---> Sequential Merge (io.Copy) ---> Final File ---> Delete Parts
 Worker Goroutines ---> [ part_2.bin ] /
@@ -41,7 +42,7 @@ Target File Preallocated (file.Truncate)
 Worker Goroutines ===== WriteAt(offset) =====> [ Final File ] (Single Pass, No Temp Files)
 ```
 
-### 1. Approach 1: Temporary Part Files & Micro-Chunks (`old_main.go`)
+### 1. Approach 1: Temporary Part Files & Micro-Chunks
 
 In the initial prototype:
 - **Micro-Range Loop**: Within each chunk worker, it looped making repeated tiny HTTP GET requests (e.g., 4096 bytes per request).
@@ -55,7 +56,7 @@ In the initial prototype:
 
 ---
 
-### 2. Approach 2: Direct Concurrent Writing with `WriteAt` (`main.go`)
+### 2. Approach 2: Direct Concurrent Writing with `WriteAt`
 
 To solve the I/O bottleneck, the design was re-architected:
 - **Pre-allocation (`file.Truncate`)**: Before launching workers, the target file is created with `os.Create` and immediately expanded to `totalFileSize` with `file.Truncate`.
@@ -146,21 +147,43 @@ To solve the I/O bottleneck, the design was re-architected:
 - Optional: [just](https://github.com/casey/just) command runner
 - Linux / macOS / Windows (POSIX-compliant filesystem recommended)
 
+---
+
+### Installation & Pre-Built Binaries
+
+Download pre-compiled binaries for Linux, macOS, and Windows directly from [GitHub Releases](https://github.com/riazXrazor/go-parallel-downloader/releases).
+
+Each release includes SHA256 checksums (`checksums.txt`) to verify binary integrity.
+
+---
+
 ### Build & Run
 
-#### Using `just` (Convenient)
+#### Using `just` (Convenient Task Runner)
 
-A [`justfile`](./justfile) is provided for easy task automation:
+A [`justfile`](./justfile) is provided for common development and release tasks:
 
 ```bash
-# Build the binary
-just build
+# List all available recipes
+just
 
-# Run the downloader
-just run https://test-videos.co.uk/vids/bigbuckbunny/mp4/av1/1080/Big_Buck_Bunny_1080_10s_5MB.mp4
+# Build the local binary
+just local-build
 
-# Clean up downloaded test files
-just clean
+# Run the downloader against a target URL
+just local-run https://test-videos.co.uk/vids/bigbuckbunny/mp4/av1/1080/Big_Buck_Bunny_1080_10s_5MB.mp4
+
+# Clean up downloaded test media files
+just local-cleantmp
+
+# Cross-compile binaries for Linux, macOS, and Windows (amd64 & arm64) into bin/
+just build-all
+
+# Build and package release tarballs/zips with SHA256 checksums
+just release
+
+# Clean up build artifacts
+just build-clean
 ```
 
 #### Using Go CLI Directly
@@ -169,29 +192,35 @@ just clean
 # Build the binary
 go build -o gcd main.go
 
+# Check version and build info
+./gcd --version
+
 # Run the downloader
 ./gcd <FILE_URL>
 
-# Or run directly with Go
+# Or run directly with Go without compiling
 go run main.go https://test-videos.co.uk/vids/bigbuckbunny/mp4/av1/1080/Big_Buck_Bunny_1080_10s_5MB.mp4
 ```
 
+---
+
 ### Verification & Testing
 
-Verify that concurrent chunk downloads preserve byte integrity:
+Verify that concurrent chunk downloads preserve exact byte integrity by comparing checksums against a standard single-stream download:
 
 ```bash
-# 1. Download sample test video (1MB)
-just run https://test-videos.co.uk/vids/bigbuckbunny/mp4/av1/360/Big_Buck_Bunny_360_10s_1MB.mp4
+# 1. Download file using gcd
+./gcd https://test-videos.co.uk/vids/bigbuckbunny/mp4/av1/360/Big_Buck_Bunny_360_10s_1MB.mp4
 
-# 2. Run checksum verification against known good test file (select 1 for 1MB, or 2 for 5MB)
-just verify 1
+# 2. Download the original file directly with curl for comparison
+curl -sO https://test-videos.co.uk/vids/bigbuckbunny/mp4/av1/360/Big_Buck_Bunny_360_10s_1MB.mp4 -o original.mp4
 
-# Or verify manually via md5sum:
-md5sum ./Big_Buck_Bunny_360_10s_1MB.mp4 ./verify_file/Big_Buck_Bunny_360_10s_1MB.mp4
+# 3. Compare checksums to verify byte integrity
+sha256sum Big_Buck_Bunny_360_10s_1MB.mp4 original.mp4
 
-# 3. Clean up test files
-just clean
+# 4. Clean up test files
+just local-cleantmp
+rm -f original.mp4
 ```
 
 ---
@@ -199,22 +228,23 @@ just clean
 ## 📁 Repository Structure
 
 ```
-concurrent-downloader/
-├── main.go               # Optimized concurrent downloader (WriteAt, preallocation & visual progress)
-├── old_main.go           # Initial prototype (micro-chunking & temporary file merging)
-├── justfile              # Task runner recipes for build, run, clean, and verify
-├── verify_file/          # Benchmark files for checksum comparison
-├── unused_scripts/       # Archived shell scripts (clean.sh, verify_test_file.sh)
-├── .golangci.yml         # golangci-lint linter configuration
-├── .gitignore            # Git ignore rules for binaries, media, and temp files
-├── LICENSE               # MIT License
-├── go.mod                # Go module definition (zero dependencies)
-└── README.md             # Project documentation and learning notes
+go-concurrent-downloader/
+├── .github/
+│   └── workflows/
+│       └── release.yml     # Automated multi-platform build & release CI workflow
+├── gif/
+│   └── gcd.gif             # Visual CLI demo
+├── .gitignore              # Git ignore rules
+├── .golangci.yml           # golangci-lint linter configuration
+├── LICENSE                 # MIT License
+├── README.md               # Project documentation and learning notes
+├── go.mod                  # Go module definition (zero dependencies)
+├── justfile                # Task runner recipes (build, run, clean, release)
+└── main.go                 # Optimized concurrent downloader (WriteAt, preallocation & visual progress)
 ```
 
 ---
 
 ## 📄 License
 
-This project is licensed under the [MIT License](https://raw.githubusercontent.com/riazXrazor/go-concurrent-downloader/refs/heads/master/LICENSE).
-
+This project is licensed under the [MIT License](./LICENSE).
