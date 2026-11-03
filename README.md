@@ -22,13 +22,7 @@ This project was built as an exploration into Go's concurrency primitives (`goro
 
 ### 📺 CLI Interface Preview
 
-```text
-Downloading with 4 connections
-Progress: ████████████████████████████████████████████▒▒▒▒▒▒
-Download Progress: 84.00% (4.20 MB/5.00 MB)
-
-Download took 412ms
-```
+<img src="./gif/gcd.gif" width="600">
 
 ---
 
