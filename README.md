@@ -1,8 +1,18 @@
-# Go Concurrent Downloader (`gcd`)
+# Go Concurrent Downloader (`gdl`)
 
 A high-performance, concurrent command-line file downloader written in Go with **zero 3rd-party dependencies**.
 
 This project was built as an exploration into Go's concurrency primitives (`goroutines`, `sync.WaitGroup`, `channels`), POSIX-level concurrent file I/O (`pwrite`/`WriteAt`), and HTTP byte-range specifications (`RFC 7233`) — relying solely on the Go Standard Library.
+
+> [!NOTE]
+> **Why `gdl` instead of `gcd`?**
+> If you or your users use Oh My Zsh or popular dotfile sets with the `git` plugin enabled:
+> `gcd` is often defined as an alias for:
+> ```bash
+> alias gcd='git checkout $(git_develop_branch)'
+> # or 'git checkout dev'
+> ```
+> If that plugin is loaded, the shell alias takes precedence over binary paths in `$PATH`. To avoid naming collisions and guarantee seamless invocation across all terminal environments, the binary is named **`gdl`**.
 
 ---
 
@@ -23,7 +33,7 @@ This project was built as an exploration into Go's concurrency primitives (`goro
 
 ### 📺 CLI Interface Preview
 
-<img src="./gif/gcd.gif" width="600">
+<img src="./gif/gdl.gif" width="600">
 
 ---
 
@@ -149,15 +159,27 @@ To solve the I/O bottleneck, the design was re-architected:
 
 ---
 
-### Installation & Pre-Built Binaries
+### ⚡ Easy Install
 
-Download pre-compiled binaries for Linux, macOS, and Windows directly from [GitHub Releases](https://github.com/riazXrazor/go-parallel-downloader/releases).
+The fastest way to install `gdl` directly to your `$GOPATH/bin`:
+
+```bash
+go install github.com/riazXrazor/go-concurrent-downloader/cmd/gdl@latest
+```
+
+Make sure your Go bin path (`$(go env GOPATH)/bin`) is added to your `$PATH`.
+
+---
+
+### 📦 Pre-Built Binaries
+
+Download pre-compiled standalone binaries for Linux, macOS, and Windows directly from [GitHub Releases](https://github.com/riazXrazor/go-parallel-downloader/releases).
 
 Each release includes SHA256 checksums (`checksums.txt`) to verify binary integrity.
 
 ---
 
-### Build & Run
+### 🔨 Build & Run from Source
 
 #### Using `just` (Convenient Task Runner)
 
@@ -167,7 +189,13 @@ A [`justfile`](./justfile) is provided for common development and release tasks:
 # List all available recipes
 just
 
-# Build the local binary
+# Build binary into bin/gdl (with injected version & commit metadata)
+just build
+
+# Install binary to $GOPATH/bin with metadata
+just install
+
+# Build local binary in project root
 just local-build
 
 # Run the downloader against a target URL
@@ -190,27 +218,27 @@ just build-clean
 
 ```bash
 # Build the binary
-go build -o gcd main.go
+go build -o gdl ./cmd/gdl
 
 # Check version and build info
-./gcd --version
+./gdl --version
 
 # Run the downloader
-./gcd <FILE_URL>
+./gdl <FILE_URL>
 
 # Or run directly with Go without compiling
-go run main.go https://test-videos.co.uk/vids/bigbuckbunny/mp4/av1/1080/Big_Buck_Bunny_1080_10s_5MB.mp4
+go run ./cmd/gdl https://test-videos.co.uk/vids/bigbuckbunny/mp4/av1/1080/Big_Buck_Bunny_1080_10s_5MB.mp4
 ```
 
 ---
 
-### Verification & Testing
+### 🧪 Verification & Testing
 
 Verify that concurrent chunk downloads preserve exact byte integrity by comparing checksums against a standard single-stream download:
 
 ```bash
-# 1. Download file using gcd
-./gcd https://test-videos.co.uk/vids/bigbuckbunny/mp4/av1/360/Big_Buck_Bunny_360_10s_1MB.mp4
+# 1. Download file using gdl
+./gdl https://test-videos.co.uk/vids/bigbuckbunny/mp4/av1/360/Big_Buck_Bunny_360_10s_1MB.mp4
 
 # 2. Download the original file directly with curl for comparison
 curl -sO https://test-videos.co.uk/vids/bigbuckbunny/mp4/av1/360/Big_Buck_Bunny_360_10s_1MB.mp4 -o original.mp4
@@ -225,6 +253,15 @@ rm -f original.mp4
 
 ---
 
+## 🔗 Test URLs
+
+- `https://test-videos.co.uk/vids/bigbuckbunny/mp4/av1/360/Big_Buck_Bunny_360_10s_1MB.mp4` (~1 MB)
+- `https://test-videos.co.uk/vids/bigbuckbunny/mp4/av1/1080/Big_Buck_Bunny_1080_10s_5MB.mp4` (~5 MB)
+- `https://testfileorg.netwet.net/500MB-CZIPtestfile.org.zip` (~500 MB)
+- `https://pub-821312cfd07a4061bf7b99c1f23ed29b.r2.dev/3dicons-png-dynamic-1.0.0.zip` (~1.26 GB)
+
+---
+
 ## 📁 Repository Structure
 
 ```
@@ -232,15 +269,17 @@ go-concurrent-downloader/
 ├── .github/
 │   └── workflows/
 │       └── release.yml     # Automated multi-platform build & release CI workflow
+├── cmd/
+│   └── gdl/
+│       └── main.go         # Application entry point (concurrent downloader, WriteAt & visual progress)
 ├── gif/
-│   └── gcd.gif             # Visual CLI demo
+│   └── gdl.gif             # Visual CLI demo
 ├── .gitignore              # Git ignore rules
 ├── .golangci.yml           # golangci-lint linter configuration
 ├── LICENSE                 # MIT License
 ├── README.md               # Project documentation and learning notes
 ├── go.mod                  # Go module definition (zero dependencies)
-├── justfile                # Task runner recipes (build, run, clean, release)
-└── main.go                 # Optimized concurrent downloader (WriteAt, preallocation & visual progress)
+└── justfile                # Task runner recipes (build, run, clean, release)
 ```
 
 ---

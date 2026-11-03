@@ -23,14 +23,10 @@ type ChunkSlice struct {
 	end   int64
 }
 
-// https://test-videos.co.uk/vids/bigbuckbunny/mp4/av1/360/Big_Buck_Bunny_360_10s_1MB.mp4
-// https://test-videos.co.uk/vids/bigbuckbunny/mp4/av1/1080/Big_Buck_Bunny_1080_10s_5MB.mp4
-// https://testfileorg.netwet.net/500MB-CZIPtestfile.org.zip
-// https://pub-821312cfd07a4061bf7b99c1f23ed29b.r2.dev/3dicons-png-dynamic-1.0.0.zip 1.26 GB
 func main() {
 
 	if len(os.Args) > 1 && os.Args[1] == "--version" {
-		fmt.Printf("Go Concurrent Downloader (gcd) %s (commit: %s, built at: %s)\n", version, commit, date)
+		fmt.Printf("Go Concurrent Downloader (gdl) %s (commit: %s, built at: %s)\n by Riaz Laskar\n", version, commit, date)
 		os.Exit(0)
 	}
 

@@ -5,7 +5,7 @@ default:
     
 
 # Application configuration
-APP_NAME := "gcd"
+APP_NAME := "gdl"
 BUILD_DIR := "bin"
 VERSION := `git describe --tags --always --dirty 2>/dev/null || echo "dev"`
 COMMIT := `git rev-parse --short HEAD 2>/dev/null || echo "unknown"`
@@ -16,12 +16,12 @@ LDFLAGS := "-s -w -X main.version=" + VERSION + " -X main.commit=" + COMMIT + " 
 
 
 local-run file:
-    go run main.go {{ file }}
+    go run ./cmd/gdl {{ file }}
 
 local-build:
-    go build .
+    go build -o {{APP_NAME}} ./cmd/gdl
 local-cleantmp:
-    rm -f Big_Buck_Bunny_360_10s_1MB.mp4 Big_Buck_Bunny_1080_10s_5MB.mp4 500MB-CZIPtestfile.org.zip 3dicons-png-dynamic-1.0.0.zip
+    @rm -f Big_Buck_Bunny_360_10s_1MB.mp4 Big_Buck_Bunny_1080_10s_5MB.mp4 500MB-CZIPtestfile.org.zip 3dicons-png-dynamic-1.0.0.zip
 
 
 local-verify select:
@@ -34,17 +34,25 @@ local-verify select:
         } 
     }}
 
+# Host platform build
+build:
+    @mkdir -p {{BUILD_DIR}}
+    go build -trimpath -ldflags "{{LDFLAGS}}" -o {{BUILD_DIR}}/{{APP_NAME}} ./cmd/gdl
 
+install:
+    go install -trimpath -ldflags "{{LDFLAGS}}" ./cmd/gdl
+
+# Multi-platform builds
 build-clean:
     @rm -rf {{BUILD_DIR}}
 
 build-all: build-clean
     @mkdir -p {{BUILD_DIR}}
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "{{LDFLAGS}}" -o {{BUILD_DIR}}/{{APP_NAME}}-linux-amd64 .
-    CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags "{{LDFLAGS}}" -o {{BUILD_DIR}}/{{APP_NAME}}-linux-arm64 .
-    CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags "{{LDFLAGS}}" -o {{BUILD_DIR}}/{{APP_NAME}}-darwin-amd64 .
-    CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags "{{LDFLAGS}}" -o {{BUILD_DIR}}/{{APP_NAME}}-darwin-arm64 .
-    CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags "{{LDFLAGS}}" -o {{BUILD_DIR}}/{{APP_NAME}}-windows-amd64.exe .
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "{{LDFLAGS}}" -o {{BUILD_DIR}}/{{APP_NAME}}-linux-amd64 ./cmd/gdl
+    CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "{{LDFLAGS}}" -o {{BUILD_DIR}}/{{APP_NAME}}-linux-arm64 ./cmd/gdl
+    CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "{{LDFLAGS}}" -o {{BUILD_DIR}}/{{APP_NAME}}-darwin-amd64 ./cmd/gdl
+    CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "{{LDFLAGS}}" -o {{BUILD_DIR}}/{{APP_NAME}}-darwin-arm64 ./cmd/gdl
+    CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "{{LDFLAGS}}" -o {{BUILD_DIR}}/{{APP_NAME}}-windows-amd64.exe ./cmd/gdl
 
 release: build-all
     @echo "==> Packaging archives..."
