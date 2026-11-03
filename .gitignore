@@ -1,5 +1,6 @@
 # Binaries & compiled outputs
 gpd
+gcd
 parallel-downloader
 main
 *.exe

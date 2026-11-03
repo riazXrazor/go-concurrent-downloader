@@ -1,4 +1,4 @@
-# Go Parallel Downloader (`gpd`)
+# Go Concurrent Downloader (`gcd`)
 
 A high-performance, concurrent command-line file downloader written in Go with **zero 3rd-party dependencies**.
 
@@ -9,7 +9,7 @@ This project was built as an exploration into Go's concurrency primitives (`goro
 ## 🚀 Features
 
 - **Zero 3rd-Party Dependencies**: Crafted purely with the Go standard library (`net/http`, `os`, `sync`, `math`, `time`, etc.). No external libraries, bloat, or supply-chain dependencies.
-- **Parallel Multi-Chunk Downloads**: Splits large files into distinct byte segments downloaded concurrently using HTTP `Range` headers.
+- **Concurrent Multi-Chunk Downloads**: Splits large files into distinct byte segments downloaded concurrently using HTTP `Range` headers.
 - **Direct Concurrent File Writes**: Pre-allocates the destination file with `file.Truncate` and writes chunks concurrently using thread-safe `file.WriteAt`, completely eliminating temporary chunk files and sequential merge overhead.
 - **In-Memory Chunk Slicing**: Calculates segment offsets cleanly using a lightweight `ChunkSlice` model (`start`/`end`), dispatching workers with no intermediate file tracking.
 - **Interactive Visual CLI Progress Bar**: Real-time ANSI two-line display featuring a visual block progress bar (`█████▒▒▒▒▒`), download percentage, and human-readable byte counts (`B`, `KB`, `MB`, `GB`, `TB`).
@@ -65,7 +65,7 @@ In the initial prototype:
 
 To solve the I/O bottleneck, the design was re-architected:
 - **Pre-allocation (`file.Truncate`)**: Before launching workers, the target file is created with `os.Create` and immediately expanded to `totalFileSize` with `file.Truncate`.
-- **Parallel Random-Access Writing (`file.WriteAt`)**: Go's `(*os.File).WriteAt` utilizes the underlying POSIX `pwrite(2)` system call. Because `WriteAt` operates at a specific offset and does not modify the file's shared read/write seek pointer, **multiple goroutines can safely write to different non-overlapping offsets of the same open file concurrently**.
+- **Concurrent Random-Access Writing (`file.WriteAt`)**: Go's `(*os.File).WriteAt` utilizes the underlying POSIX `pwrite(2)` system call. Because `WriteAt` operates at a specific offset and does not modify the file's shared read/write seek pointer, **multiple goroutines can safely write to different non-overlapping offsets of the same open file concurrently**.
 - **In-Memory `ChunkSlice` Dispatching**: Each chunk's boundaries (`start` and `end` byte offsets) are calculated in memory and dispatched straight to workers without auxiliary map tracking or temporary files.
 - **Single HTTP Request Per Chunk**: Each worker sends a single `GET` request with the chunk's entire byte range (`bytes=start-end`) and streams the response body using a reusable 32 KB buffer.
 - **`Accept-Encoding: identity`**: Disabled automatic HTTP compression (gzip/deflate) to ensure the server streams exact byte counts corresponding directly to disk offsets.
@@ -139,7 +139,7 @@ To solve the I/O bottleneck, the design was re-architected:
 | :--- | :--- | :--- | :--- |
 | `< 2 MB` | 1 | Full file | Single connection (avoids chunk overhead) |
 | `2 MB - 10 MB` | Up to 8 | ~1 MB | Low concurrency |
-| `10 MB - 100 MB` | Up to 8 | ~5 MB | Balanced parallel streaming |
+| `10 MB - 100 MB` | Up to 8 | ~5 MB | Balanced concurrent streaming |
 | `> 100 MB` | Up to 8 | 10 MB - 20 MB | Maximum throughput |
 
 ---
@@ -173,10 +173,10 @@ just clean
 
 ```bash
 # Build the binary
-go build -o gpd main.go
+go build -o gcd main.go
 
 # Run the downloader
-./gpd <FILE_URL>
+./gcd <FILE_URL>
 
 # Or run directly with Go
 go run main.go https://test-videos.co.uk/vids/bigbuckbunny/mp4/av1/1080/Big_Buck_Bunny_1080_10s_5MB.mp4
@@ -184,7 +184,7 @@ go run main.go https://test-videos.co.uk/vids/bigbuckbunny/mp4/av1/1080/Big_Buck
 
 ### Verification & Testing
 
-Verify that parallel chunk downloads preserve byte integrity:
+Verify that concurrent chunk downloads preserve byte integrity:
 
 ```bash
 # 1. Download sample test video (1MB)
@@ -205,8 +205,8 @@ just clean
 ## 📁 Repository Structure
 
 ```
-parallel-downloader/
-├── main.go               # Optimized parallel downloader (WriteAt, preallocation & visual progress)
+concurrent-downloader/
+├── main.go               # Optimized concurrent downloader (WriteAt, preallocation & visual progress)
 ├── old_main.go           # Initial prototype (micro-chunking & temporary file merging)
 ├── justfile              # Task runner recipes for build, run, clean, and verify
 ├── verify_file/          # Benchmark files for checksum comparison
@@ -222,5 +222,5 @@ parallel-downloader/
 
 ## 📄 License
 
-This project is licensed under the [MIT License](https://raw.githubusercontent.com/riazXrazor/go-parallel-downloader/refs/heads/master/LICENSE).
+This project is licensed under the [MIT License](https://raw.githubusercontent.com/riazXrazor/go-concurrent-downloader/refs/heads/master/LICENSE).
 

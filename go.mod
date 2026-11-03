@@ -1,3 +1,3 @@
-module gpd
+module gcd
 
 go 1.27.1
